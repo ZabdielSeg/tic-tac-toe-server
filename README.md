@@ -23,6 +23,8 @@ The front code can be found [Here](https://github.com/ZabdielSeg/tic-tac-toe-cli
 
 |   Route   | HTTP Verb |   Description   |
 |-----------|-----------|-----------------|
+| `/login` |    POST    | Log the user in|
+| `/sign-up` |    POST    | Register user on Database|
 | `/update-user/:userID` |    PUT    | Update user stats|
 | `/all-users` |    GET    | Gets all users registrations list|
 

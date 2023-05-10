@@ -1,4 +1,4 @@
-const { loginUser } = require('./database/contollers/controllers');
+const { v4: uuid } = require('uuid');
 
 module.exports = httpServer => {
 
@@ -12,6 +12,7 @@ module.exports = httpServer => {
     });
 
     let boardPlayers = [];
+    let waitingRoom = {};
 
     io.on("connection", socket => {
         socket.emit('connectedUser', {
@@ -32,34 +33,33 @@ module.exports = httpServer => {
 
             // If there are two players in the lobby, start a game between them
             if (playerIds.length > 1) {
-                const gameId = '1234';
-                io.to('lobby').emit('game-found', gameId)
+
+                setTimeout(() => {
+                    const gameId = uuid();
+                    io.to('lobby').emit('game-found', gameId)
+                }, 3000)
             }
         });
 
-        let someGameId = '';
 
-        socket.on('accept-game', gameId => {
-            someGameId = gameId
-            socket.join(someGameId)
-            io.to(someGameId).emit('start-game', boardPlayers)
-        })
+        socket.on('accept-game', data => {
+            if (!data.matchAccepted) {
+                socket.broadcast.emit('decline-game', { data: false });
+                return;
+            }
 
-        socket.on('decline-game', data => {
+            waitingRoom[data.gameId] = waitingRoom[data.gameId] || [];
+            waitingRoom[data.gameId].push(data);
+            socket.join(data.gameId)
+            if (waitingRoom[data.gameId].length === 2) {
+                io.in(data.gameId).emit('move to board', boardPlayers)
+                io.to(data.gameId).emit('start-game', waitingRoom[data.gameId])
+            }
 
-        })
-
-        socket.on('login', async data => {
-            const userInfo = await loginUser(data)
-            socket.emit('userInfo', {
-                userData: userInfo,
-                socketID: socket.id
-            });
-            socket.join('lobby')
         })
 
         socket.on('move', data => {
-            io.to(someGameId).emit('board', {
+            io.to(data.gameID).emit('board', {
                 ...data,
                 player: data.player === "X" ? "O" : "X",
                 turn: data.turn == 0 ? 1 : 0,
@@ -75,6 +75,7 @@ module.exports = httpServer => {
         });
 
         socket.on('disconnect', (data) => {
+            console.log(data);
             boardPlayers = []
         });
 
